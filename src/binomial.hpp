@@ -35,10 +35,57 @@ public:
                 v[i][j] = a;
     }
 
-    T get(int i, int j)
+    double calculate_serial()
     {
-        return v[i][j];
+        for (int i = n - 1; i >= 0; i--)
+        {
+            for (int j = 0; j < i; j++)
+            {
+                v[i - 1][j] = 0.5 * (v[i][j] + v[i][j + 1]);
+            }
+        }
+        return v[0][0];
     }
+
+    double calculate_parallel1()
+    {
+        for (int i = n - 1; i >= 0; i--)
+        {
+#pragma omp parallel for
+            for (int j = 0; j < i; j++)
+            {
+                v[i - 1][j] = 0.5 * (v[i][j] + v[i][j + 1]);
+            }
+        }
+        return v[0][0];
+    }
+
+    double calculate_parallel2()
+    {
+        for (int i = n - 1; i >= 0; i--)
+        {
+#pragma omp parallel for
+            for (int j = 0; j < i; j = j + 2)
+            {
+                v[i - 1][j] = 0.5 * (v[i][j] + v[i][j + 1]);
+            }
+#pragma omp parallel for
+            for (int j = 1; j < i; j = j + 2)
+            {
+                v[i - 1][j] = 0.5 * (v[i][j] + v[i][j + 1]);
+            }
+        }
+        return v[0][0];
+    }
+
+    void set_initial_condition()
+    {
+        for (int i = 0; i <= n; i++)
+        {
+            v[n - 1][i] = (i < n / 2) ? 1.0 : 0.0;
+        }
+    }
+
     void print()
     {
         for (int i = 0; i < n; i++)
