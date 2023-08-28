@@ -25,8 +25,8 @@ PYBIND11_MODULE(optionpricing, mod)
         .def(py::init<int, double>())
         .def("set_initial_condition", &BinomialMeshDouble::set_initial_condition)
         .def("calculate_serial", &BinomialMeshDouble::calculate_serial)
-        .def("calculate_parallel1", &BinomialMeshDouble::calculate_parallel1)
-        .def("calculate_parallel2", &BinomialMeshDouble::calculate_parallel2)
+        .def("calculate_parallel", &BinomialMeshDouble::calculate_parallel)
+        .def("get", &BinomialMeshDouble::get)
         .def("print", &BinomialMeshDouble::print);
 
     py::class_<BinomialPricing>(mod, "BinomialPricing")
