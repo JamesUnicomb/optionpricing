@@ -65,6 +65,7 @@ double BinomialMesh<T>::calculate_serial()
     {
         for (int j = i - 1; j >= 0; j--)
         {
+            // printf("v[%02d][%02d] = 0.5 * (v[%02d][%02d] + v[%02d][%02d]) = 0.5 * (%f + %f) = %f\n", i - 1, j, i, j, i, j + 1, v[i][j], v[i][j + 1], 0.5 * (v[i][j] + v[i][j + 1]));
             v[i - 1][j] = 0.5 * (v[i][j] + v[i][j + 1]);
         }
     }
@@ -74,54 +75,73 @@ double BinomialMesh<T>::calculate_serial()
 template <class T>
 double BinomialMesh<T>::calculate_parallel()
 {
-    int num = 2;
-    int level = n - 1;
-    int blocksize = level / num + 1;
-
-    while (blocksize > 1)
+#pragma omp parallel
     {
-        for (int idx = 0; idx < level / blocksize + 1; idx++)
+        int level = n - 1;
+        int num = omp_get_num_threads();
+        int idx = omp_get_thread_num();
+
+        int blocksize = level / num + 1;
+
+        while (blocksize > 1)
         {
-            int jstart, jstop, jdiff;
+            int istart, jstart;
 
             jstart = idx * blocksize;
-            jstop = std::min((idx + 1) * blocksize, level);
-            jdiff = jstop - jstart;
+            istart = level;
 
             int ii, jj;
-            int step = 1;
-            for (int i = 0; i < blocksize; i++)
+
+            for (int i = 0; i < blocksize - 1; i++)
             {
-                ii = level - i;
-                for (int j = 0; j < blocksize - i - 1; j++)
+                ii = istart - i;
+                for (int j = 0; j < blocksize - i; j++)
                 {
                     jj = jstart + j;
-                    printf("loop1: v[%d][%d] = 0.5 * (v[%d][%d] + v[%d][%d]) = 0.5 * (%f + %f)\n", ii - 1, jj, ii, jj, ii, jj + 1, v[ii][j], v[ii][jj + 1]);
-                    v[ii - 1][jj] = 0.5 * (v[ii][jj] + v[ii][jj + 1]);
+                    if (jj < ii)
+                    {
+                        // printf("v[%02d][%02d] = 0.5 * (v[%02d][%02d] + v[%02d][%02d]) = 0.5 * (%f + %f) = %f\n", ii - 1, jj, ii, jj, ii, jj + 1, v[ii][jj], v[ii][jj + 1], 0.5 * (v[ii][jj] + v[ii][jj + 1]));
+                        v[ii - 1][jj] = 0.5 * (v[ii][jj] + v[ii][jj + 1]);
+                    }
                 }
-                step++;
             }
 
-            // #pragma omp barrier
+#pragma omp barrier
 
-            // printf("level = %d\n", level);
+            for (int i = 0; i < blocksize - 1; i++)
+            {
+                ii = istart - i;
+                for (int j = blocksize - 1; j > blocksize - i - 1; j--)
+                {
+                    jj = jstart + j;
+                    if (jj < ii)
+                    {
+                        // printf("v[%02d][%02d] = 0.5 * (v[%02d][%02d] + v[%02d][%02d]) = 0.5 * (%f + %f) = %f\n", ii - 1, jj, ii, jj, ii, jj + 1, v[ii][jj], v[ii][jj + 1], 0.5 * (v[ii][jj] + v[ii][jj + 1]));
+                        v[ii - 1][jj] = 0.5 * (v[ii][jj] + v[ii][jj + 1]);
+                    }
+                }
+            }
 
-            // // step = blocksize - 1;
-            // for (int i = level - 1; i > level - blocksize; i--)
-            // {
-            //     printf("i = %d, jstart, jstop = %d, %d\n", i, jstart, jstop);
-            //     for (int j = jstop - 1; j > jstart; j--)
-            //     {
-            //         printf("loop2: v[%d][%d] = 0.5 * (v[%d][%d] + v[%d][%d]) = 0.5 * (%f + %f)\n", i - 1, j, i, j, i, j + 1, v[i][j], v[i][j + 1]);
-            //         v[i - 1][j] = 0.5 * (v[i][j] + v[i][j + 1]);
-            //     }
-            //     step--;
-            // }
+#pragma omp barrier
+
+            level -= blocksize - 1;
+            blocksize = level / num + 1;
         }
 
-        level -= blocksize - 1;
-        blocksize = level / num + 1;
+        if (idx == 0)
+        {
+            for (int i = level; i > 0; i--)
+            {
+                for (int j = i - 1; j >= 0; j--)
+                {
+                    // printf("v[%02d][%02d] = 0.5 * (v[%02d][%02d] + v[%02d][%02d]) = 0.5 * (%f + %f) = %f\n", i - 1, j, i, j, i, j + 1, v[i][j], v[i][j + 1], 0.5 * (v[i][j] + v[i][j + 1]));
+                    v[i - 1][j] = 0.5 * (v[i][j] + v[i][j + 1]);
+                }
+            }
+        }
     }
+
+    v[0][0] = 0.5 * (v[1][0] + v[1][1]);
 
     return v[0][0];
 }

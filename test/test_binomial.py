@@ -16,19 +16,17 @@ def test_mesh_calculate():
     print("serial: ", stime)
     print("speedup: ", stime / ptime, "x")
 
-    bms = optionpricing.BinomialMesh(12, 0.0)
+    bms = optionpricing.BinomialMesh(1200, 0.0)
     bms.set_initial_condition()
     bms.calculate_serial()
-    bms.print()
 
-    bmp = optionpricing.BinomialMesh(12, 0.0)
+    bmp = optionpricing.BinomialMesh(1200, 0.0)
     bmp.set_initial_condition()
     bmp.calculate_parallel()
-    bmp.print()
 
     for i in range(10):
-        for j in range(i+1):
-            assert np.isclose(bmp.get(i,j), bms.get(i,j))
+        for j in range(i + 1):
+            assert np.isclose(bmp.get(i, j), bms.get(i, j))
 
     # bm1 = optionpricing.BinomialMesh(12, 0.0)
     # bm1.set_initial_condition()
