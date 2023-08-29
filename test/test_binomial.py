@@ -1,36 +1,41 @@
 import optionpricing
-
+import numpy as np
 from timeit import timeit
 
 
-# def test_timeit():
-#     bp = optionpricing.BinomialPricing(10000000)
-
-#     print("parallel: ", timeit(bp.sum_parallel, number=1000) / 1000)
-#     print("serial: ", timeit(bp.sum_serial, number=1000) / 1000)
-
-
 def test_mesh_calculate():
-    bm = optionpricing.BinomialMesh(1000, 0.0)
-    bm.set_initial_condition()
+    bmp = optionpricing.BinomialMesh(1000, 0.0)
+    bmp.set_initial_condition()
 
-    # print("parallel: ", timeit(bm.calculate_parallel, number=1000) / 1000)
-    # print("serial: ", timeit(bm.calculate_serial, number=1000) / 1000)
+    ptime = timeit(bmp.calculate_parallel, number=1000) / 1000
+    print("parallel: ", ptime)
 
-    n = 10
+    bms = optionpricing.BinomialMesh(1000, 0.0)
+    bms.set_initial_condition()
+    stime = timeit(bms.calculate_serial, number=1000) / 1000
+    print("serial: ", stime)
+    print("speedup: ", stime / ptime, "x")
 
-    bm = optionpricing.BinomialMesh(n, 0.0)
-    bm.set_initial_condition()
-    print(bm.calculate_serial())
+    bms = optionpricing.BinomialMesh(12, 0.0)
+    bms.set_initial_condition()
+    bms.calculate_serial()
+    bms.print()
 
-    for i in range(n):
-        print(i, 0, bm.get(i, 0))
+    bmp = optionpricing.BinomialMesh(12, 0.0)
+    bmp.set_initial_condition()
+    bmp.calculate_parallel()
+    bmp.print()
 
-    bm.print()
+    for i in range(10):
+        for j in range(i+1):
+            assert np.isclose(bmp.get(i,j), bms.get(i,j))
 
+    # bm1 = optionpricing.BinomialMesh(12, 0.0)
+    # bm1.set_initial_condition()
+    # bm1.calculate_parallel()
     # bm1.print()
 
-    bm = optionpricing.BinomialMesh(10, 0.0)
-    bm.set_initial_condition()
-    print(bm.calculate_serial())
-    bm.print()
+    # bm2 = optionpricing.BinomialMesh(12, 0.0)
+    # bm2.set_initial_condition()
+    # bm2.calculate_serial()
+    # bm2.print()
