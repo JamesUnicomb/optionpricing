@@ -100,7 +100,6 @@ double BinomialMesh<T>::calculate_parallel()
                     jj = jstart + j;
                     if (jj < ii)
                     {
-                        // printf("v[%02d][%02d] = 0.5 * (v[%02d][%02d] + v[%02d][%02d]) = 0.5 * (%f + %f) = %f\n", ii - 1, jj, ii, jj, ii, jj + 1, v[ii][jj], v[ii][jj + 1], 0.5 * (v[ii][jj] + v[ii][jj + 1]));
                         v[ii - 1][jj] = 0.5 * (v[ii][jj] + v[ii][jj + 1]);
                     }
                 }
@@ -116,7 +115,6 @@ double BinomialMesh<T>::calculate_parallel()
                     jj = jstart + j;
                     if (jj < ii)
                     {
-                        // printf("v[%02d][%02d] = 0.5 * (v[%02d][%02d] + v[%02d][%02d]) = 0.5 * (%f + %f) = %f\n", ii - 1, jj, ii, jj, ii, jj + 1, v[ii][jj], v[ii][jj + 1], 0.5 * (v[ii][jj] + v[ii][jj + 1]));
                         v[ii - 1][jj] = 0.5 * (v[ii][jj] + v[ii][jj + 1]);
                     }
                 }
@@ -134,7 +132,6 @@ double BinomialMesh<T>::calculate_parallel()
             {
                 for (int j = i - 1; j >= 0; j--)
                 {
-                    // printf("v[%02d][%02d] = 0.5 * (v[%02d][%02d] + v[%02d][%02d]) = 0.5 * (%f + %f) = %f\n", i - 1, j, i, j, i, j + 1, v[i][j], v[i][j + 1], 0.5 * (v[i][j] + v[i][j + 1]));
                     v[i - 1][j] = 0.5 * (v[i][j] + v[i][j + 1]);
                 }
             }
