@@ -46,6 +46,34 @@ double BinomialMesh1D<T>::calculate_serial()
 template <class T>
 double BinomialMesh1D<T>::calculate_parallel()
 {
+#pragma omp parallel
+    {
+        int level, blocksize;
+        int num = omp_get_num_threads();
+        int idx = omp_get_thread_num();
+
+        for (level = n - 1, blocksize = level / num + 1; level > n - 2; blocksize = level / num + 1, level -= blocksize)
+        {
+            int i, j, k;
+            for (i = 0; i < blocksize; i++)
+            {
+                for (j = 0; j < blocksize - i; j++)
+                {
+                    k = j + idx * blocksize;
+                    printf("level = %02d, idx = %02d, i = %02d, j = %02d, k = %02d\n", level, idx, i, j, k);
+
+                    // if (k < level - i)
+                    // {
+                    //     printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", k, k, k + 1, v[k], v[k + 1], 0.5 * (v[k] + v[k + 1]));
+                    //     v[k] = 0.5 * (v[k] + v[k + 1]);
+                    // }
+                }
+            }
+        }
+
+#pragma omp barrier
+    }
+
     // #pragma omp parallel
     //     {
     //         int level = 0;
