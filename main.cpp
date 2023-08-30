@@ -10,6 +10,7 @@
 
 #include "tridiag.hpp"
 #include "binomial.hpp"
+#include "binomial1d.hpp"
 
 namespace py = pybind11;
 using namespace std;
@@ -28,6 +29,15 @@ PYBIND11_MODULE(optionpricing, mod)
         .def("calculate_parallel", &BinomialMeshDouble::calculate_parallel)
         .def("get", &BinomialMeshDouble::get)
         .def("print", &BinomialMeshDouble::print);
+
+    using BinomialMeshDouble1D = BinomialMesh1D<double>;
+
+    py::class_<BinomialMeshDouble1D>(mod, "BinomialMesh1D")
+        .def(py::init<int>())
+        .def(py::init<int, double>())
+        .def("set_initial_condition", &BinomialMeshDouble1D::set_initial_condition)
+        .def("calculate_serial", &BinomialMeshDouble1D::calculate_serial)
+        .def("calculate_parallel", &BinomialMeshDouble1D::calculate_parallel);
 
     py::class_<BinomialPricing>(mod, "BinomialPricing")
         .def(py::init<int>())
