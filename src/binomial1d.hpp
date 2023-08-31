@@ -3,148 +3,171 @@
 
 #include <omp.h>
 
-template <class T>
 class BinomialMesh1D
 {
 private:
     const int n;
-    T *v;
+    double *v;
 
 public:
     BinomialMesh1D(int n);
-    BinomialMesh1D(int n, const T &a);
+    BinomialMesh1D(int n, const double &a);
+    double getValue(
+        double &p, double &pn);
+    double getValue(
+        double &p, double &pn, int current_step, int num_up_movements);
+    double getExerciseValue(
+        int current_step, int num_up_movements);
+    void parallelStencilTriangle(
+        double *p, double *past_edge_points, int jstart, int m, int triangle_size, int level);
+    void parallelStencilRhombus(
+        double *p, double *past_edge_points, double *curr_edge_points, int jstart, int m, int width, int level);
     double calculate_serial();
     double calculate_parallel();
     void set_initial_condition();
     ~BinomialMesh1D();
 };
 
-template <class T>
-BinomialMesh1D<T>::BinomialMesh1D(int n) : n(n), v(n > 0 ? new T[n] : nullptr) {}
+BinomialMesh1D::BinomialMesh1D(int n) : n(n), v(n > 0 ? new double[n] : nullptr) {}
 
-template <class T>
-BinomialMesh1D<T>::BinomialMesh1D(int n, const T &a) : n(n), v(n > 0 ? new T[n] : nullptr)
+BinomialMesh1D::BinomialMesh1D(int n, const double &a) : n(n), v(n > 0 ? new double[n] : nullptr)
 {
     for (int i = 0; i < n; i++)
         v[i] = a;
 }
 
-template <class T>
-double BinomialMesh1D<T>::calculate_serial()
+double BinomialMesh1D::getValue(
+    double &p, double &pn)
+{
+    return 0.5 * (p + pn);
+}
+
+inline double BinomialMesh1D::getValue(
+    double &p, double &pn, int current_step, int num_up_movements)
+{
+    return 0.5 * (p + pn);
+}
+
+inline double BinomialMesh1D::getExerciseValue(
+    int current_step, int num_up_movements)
+{
+    return 0.0;
+}
+
+void BinomialMesh1D::parallelStencilTriangle(
+    double *p, double *past_edge_points, int jstart, int m, int triangle_size, int level)
+{
+    int i, j;
+    double value;
+
+    for (i = 0; i < triangle_size - 1; i++)
+    {
+        for (j = 0; j < triangle_size - i - 1; j++)
+        {
+            value = getValue(p[jstart + j], p[jstart + j + 1]);
+            p[jstart + j] = value;
+
+            if (jstart != 0 && j == 0)
+            {
+                past_edge_points[jstart - m + i + 1] = value;
+            }
+        }
+    }
+}
+
+void BinomialMesh1D::parallelStencilRhombus(
+    double *p, double *past_edge_points, double *curr_edge_points, int jstart, int m, int width, int level)
+{
+    int i, j, row_length;
+    double value;
+
+    for (i = 0; i < m; i++)
+    {
+        row_length = std::min(i + 1, width);
+        for (j = 0; j < row_length; j++)
+        {
+            if (j == i)
+            {
+                value = getValue(
+                    p[jstart + (m - i - 1) + j],
+                    past_edge_points[jstart + i]);
+                p[jstart + (m - i - 1) + j] = value;
+            }
+            else
+            {
+                value = getValue(
+                    p[jstart + (m - i - 1) + j],
+                    p[jstart + (m - i - 1) + j + 1]);
+                p[jstart + (m - i - 1) + j] = value;
+
+                if (jstart != 0 && i == m - 1 && j == 0)
+                {
+                    curr_edge_points[jstart = m] = value;
+                }
+            }
+        }
+    }
+    for (i = 0; i < width - 1; i++)
+    {
+        row_length = std::min(m - i - 1, width - i - 1);
+        for (j = 0; j < row_length; j++)
+        {
+            value = getValue(
+                p[jstart + j],
+                p[jstart + j + 1]);
+            p[jstart + j] = value;
+            if (jstart != 0 && j == 0)
+            {
+                curr_edge_points[jstart - m + i + 1] = value;
+            }
+        }
+    }
+}
+
+double BinomialMesh1D::calculate_serial()
 {
     for (int i = 0; i < n - 1; i++)
     {
         for (int j = 0; j < n - i - 1; j++)
         {
-            printf("i = %02d, j = %02d : v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", i, j, j, j, j + 1, v[j], v[j + 1], 0.5 * (v[j] + v[j + 1]));
-            v[j] = 0.5 * (v[j] + v[j + 1]);
+            v[j] = getValue(v[j], v[j + 1]);
         }
     }
     return v[0];
 }
 
-template <class T>
-double BinomialMesh1D<T>::calculate_parallel()
+double BinomialMesh1D::calculate_parallel()
 {
-#pragma omp parallel
+    int numblocks = 12;
+    int blocksize = n / numblocks;
+    int edgeblocksize = n % blocksize;
+
+    double *past_edge_points = new double[numblocks * blocksize + edgeblocksize];
+
+    for (int i = 0; i < numblocks; i++)
     {
-        int level, blocksize;
-        int num = omp_get_num_threads();
-        int idx = omp_get_thread_num();
-
-        for (level = n - 1, blocksize = level / num + 1; level > n - 2; blocksize = level / num + 1, level -= blocksize)
-        {
-            int i, j, k;
-            for (i = 0; i < blocksize; i++)
-            {
-                for (j = 0; j < blocksize - i; j++)
-                {
-                    k = j + idx * blocksize;
-                    printf("level = %02d, idx = %02d, i = %02d, j = %02d, k = %02d\n", level, idx, i, j, k);
-
-                    // if (k < level - i)
-                    // {
-                    //     printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", k, k, k + 1, v[k], v[k + 1], 0.5 * (v[k] + v[k + 1]));
-                    //     v[k] = 0.5 * (v[k] + v[k + 1]);
-                    // }
-                }
-            }
-        }
-
-#pragma omp barrier
+        parallelStencilTriangle(
+            v,
+            past_edge_points,
+            i * blocksize,
+            blocksize,
+            blocksize,
+            n);
     }
-
-    // #pragma omp parallel
-    //     {
-    //         int level = 0;
-    //         int num = omp_get_num_threads();
-    //         int idx = omp_get_thread_num();
-
-    //         int blocksize = n / num + 1;
-
-    //         while (level < n)
-    //         {
-    //             int istart, jstart;
-
-    //             jstart = idx * blocksize;
-    //             istart = level;
-
-    //             int ii, jj;
-
-    //             for (int i = 0; i < blocksize - 1; i++)
-    //             {
-    //                 ii = istart - i;
-    //                 for (int j = 0; j < blocksize - i; j++)
-    //                 {
-    //                     jj = jstart + j;
-    //                     if (jj < ii)
-    //                     {
-    //                         printf("i = %02d, j = %02d : v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", ii, jj, jj, jj, jj + 1, v[jj], v[jj + 1], 0.5 * (v[jj] + v[jj + 1]));
-    //                         v[jj] = 0.5 * (v[jj] + v[jj + 1]);
-    //                     }
-    //                 }
-    //             }
-
-    // #pragma omp barrier
-
-    //             for (int i = 0; i < blocksize - 1; i++)
-    //             {
-    //                 ii = istart - i;
-    //                 for (int j = 0; j < blocksize - i - 1; j++)
-    //                 {
-    //                     jj = jstart + j;
-    //                     if (jj < ii)
-    //                     {
-    //                         printf("i = %02d, j = %02d : v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", ii, jj, jj, jj, jj + 1, v[jj], v[jj + 1], 0.5 * (v[jj] + v[jj + 1]));
-    //                         v[jj] = 0.5 * (v[jj] + v[jj + 1]);
-    //                     }
-    //                 }
-    //             }
-
-    // #pragma omp barrier
-
-    //             level += blocksize - 1;
-    //             blocksize = (n - level) / num + 1;
-    //         }
-
-    //         // if (idx == 0)
-    //         // {
-    //         //     for (int i = 0; i < level; i++)
-    //         //     {
-    //         //         for (int j = 0; j < n - i - 1; j++)
-    //         //         {
-    //         //             printf("i = %02d, j = %02d : v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", i, j, j, j, j + 1, v[j], v[j + 1], 0.5 * (v[j] + v[j + 1]));
-    //         //             v[j] = 0.5 * (v[j] + v[j + 1]);
-    //         //         }
-    //         //     }
-    //         // }
-    //     }
-
+    if (edgeblocksize > 0)
+    {
+        parallelStencilTriangle(
+            v,
+            past_edge_points,
+            numblocks * blocksize,
+            blocksize,
+            edgeblocksize,
+            n);
+    }
     return v[0];
 }
 
-template <class T>
-void BinomialMesh1D<T>::set_initial_condition()
+void BinomialMesh1D::set_initial_condition()
 {
     for (int j = 0; j < n; j++)
     {
@@ -152,8 +175,7 @@ void BinomialMesh1D<T>::set_initial_condition()
     }
 }
 
-template <class T>
-BinomialMesh1D<T>::~BinomialMesh1D()
+BinomialMesh1D::~BinomialMesh1D()
 {
     if (v != nullptr)
     {

@@ -30,7 +30,7 @@ PYBIND11_MODULE(optionpricing, mod)
         .def("get", &BinomialMeshDouble::get)
         .def("print", &BinomialMeshDouble::print);
 
-    using BinomialMeshDouble1D = BinomialMesh1D<double>;
+    using BinomialMeshDouble1D = BinomialMesh1D;
 
     py::class_<BinomialMeshDouble1D>(mod, "BinomialMesh1D")
         .def(py::init<int>())
