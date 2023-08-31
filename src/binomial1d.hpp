@@ -36,7 +36,7 @@ double BinomialMesh1D<T>::calculate_serial()
     {
         for (int j = 0; j < n - i - 1; j++)
         {
-            printf("i = %02d, j = %02d : v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", i, j, j, j, j + 1, v[j], v[j + 1], 0.5 * (v[j] + v[j + 1]));
+            printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", j, j, j + 1, v[j], v[j + 1], 0.5 * (v[j] + v[j + 1]));
             v[j] = 0.5 * (v[j] + v[j + 1]);
         }
     }
@@ -46,99 +46,50 @@ double BinomialMesh1D<T>::calculate_serial()
 template <class T>
 double BinomialMesh1D<T>::calculate_parallel()
 {
-#pragma omp parallel
+#pragma omp parallel num_threads(4)
     {
         int level, blocksize;
         int num = omp_get_num_threads();
         int idx = omp_get_thread_num();
 
-        for (level = n - 1, blocksize = level / num + 1; level > n - 2; blocksize = level / num + 1, level -= blocksize)
+        for (level = n - 1, blocksize = level / num + 1; level > 0; level -= blocksize, blocksize = level / num + 1)
         {
-            int i, j, k;
+            int i, j, k, h;
             for (i = 0; i < blocksize; i++)
             {
                 for (j = 0; j < blocksize - i; j++)
                 {
+                    h = level - i;
                     k = j + idx * blocksize;
-                    printf("level = %02d, idx = %02d, i = %02d, j = %02d, k = %02d\n", level, idx, i, j, k);
 
-                    // if (k < level - i)
-                    // {
-                    //     printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", k, k, k + 1, v[k], v[k + 1], 0.5 * (v[k] + v[k + 1]));
-                    //     v[k] = 0.5 * (v[k] + v[k + 1]);
-                    // }
+                    if (k < h && k >= 0)
+                    {
+                        printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", k, k, k + 1, v[k], v[k + 1], 0.5 * (v[k] + v[k + 1]));
+                        // printf("set 1 level = %02d, h = %02d, k = %02d, idx = %02d, i = %02d, j = %02d, idx = %02d, blocksize = %02d\n", level, h, k, idx, i, j, idx, blocksize);
+                        v[k] = 0.5 * (v[k] + v[k + 1]);
+                    }
                 }
             }
-        }
 
 #pragma omp barrier
+            for (i = 1; i < blocksize; i++)
+            {
+                for (j = 0; j < i; j++)
+                {
+                    h = level - i;
+                    k = j + idx * blocksize + (blocksize - i);
+
+                    if (k < h && k >= 0)
+                    {
+                        printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", k, k, k + 1, v[k], v[k + 1], 0.5 * (v[k] + v[k + 1]));
+                        // printf("set 2 level = %02d, h = %02d, k = %02d, idx = %02d, i = %02d, j = %02d, idx = %02d, blocksize = %02d\n", level, h, k, idx, i, j, idx, blocksize);
+                        v[k] = 0.5 * (v[k] + v[k + 1]);
+                    }
+                }
+            }
+#pragma omp barrier
+        }
     }
-
-    // #pragma omp parallel
-    //     {
-    //         int level = 0;
-    //         int num = omp_get_num_threads();
-    //         int idx = omp_get_thread_num();
-
-    //         int blocksize = n / num + 1;
-
-    //         while (level < n)
-    //         {
-    //             int istart, jstart;
-
-    //             jstart = idx * blocksize;
-    //             istart = level;
-
-    //             int ii, jj;
-
-    //             for (int i = 0; i < blocksize - 1; i++)
-    //             {
-    //                 ii = istart - i;
-    //                 for (int j = 0; j < blocksize - i; j++)
-    //                 {
-    //                     jj = jstart + j;
-    //                     if (jj < ii)
-    //                     {
-    //                         printf("i = %02d, j = %02d : v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", ii, jj, jj, jj, jj + 1, v[jj], v[jj + 1], 0.5 * (v[jj] + v[jj + 1]));
-    //                         v[jj] = 0.5 * (v[jj] + v[jj + 1]);
-    //                     }
-    //                 }
-    //             }
-
-    // #pragma omp barrier
-
-    //             for (int i = 0; i < blocksize - 1; i++)
-    //             {
-    //                 ii = istart - i;
-    //                 for (int j = 0; j < blocksize - i - 1; j++)
-    //                 {
-    //                     jj = jstart + j;
-    //                     if (jj < ii)
-    //                     {
-    //                         printf("i = %02d, j = %02d : v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", ii, jj, jj, jj, jj + 1, v[jj], v[jj + 1], 0.5 * (v[jj] + v[jj + 1]));
-    //                         v[jj] = 0.5 * (v[jj] + v[jj + 1]);
-    //                     }
-    //                 }
-    //             }
-
-    // #pragma omp barrier
-
-    //             level += blocksize - 1;
-    //             blocksize = (n - level) / num + 1;
-    //         }
-
-    //         // if (idx == 0)
-    //         // {
-    //         //     for (int i = 0; i < level; i++)
-    //         //     {
-    //         //         for (int j = 0; j < n - i - 1; j++)
-    //         //         {
-    //         //             printf("i = %02d, j = %02d : v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", i, j, j, j, j + 1, v[j], v[j + 1], 0.5 * (v[j] + v[j + 1]));
-    //         //             v[j] = 0.5 * (v[j] + v[j + 1]);
-    //         //         }
-    //         //     }
-    //         // }
-    //     }
 
     return v[0];
 }

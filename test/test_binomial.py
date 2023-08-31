@@ -4,7 +4,7 @@ from timeit import timeit
 
 
 def test_print():
-    bm1 = optionpricing.BinomialMesh1D(12, 0.0)
+    bm1 = optionpricing.BinomialMesh1D(24, 0.0)
     bm1.set_initial_condition()
     print(bm1.calculate_parallel())
 
