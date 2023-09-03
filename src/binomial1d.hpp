@@ -67,6 +67,8 @@ void BinomialMesh1D::parallelStencilTriangle(
             value = getValue(p[jstart + j], p[jstart + j + 1]);
             p[jstart + j] = value;
 
+            printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", jstart + j, jstart + j, jstart + j + 1, p[jstart + j], p[jstart + j + 1], 0.5 * (p[jstart + j] + past_edge_points[jstart + j + 1]));
+
             if (jstart != 0 && j == 0)
             {
                 past_edge_points[jstart - m + i + 1] = value;
@@ -92,6 +94,7 @@ void BinomialMesh1D::parallelStencilRhombus(
                     p[jstart + (m - i - 1) + j],
                     past_edge_points[jstart + i]);
                 p[jstart + (m - i - 1) + j] = value;
+                printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", jstart + (m - i - 1) + j, jstart + (m - i - 1) + j, jstart + (m - i - 1) + j + 1, p[jstart + (m - i - 1) + j], past_edge_points[jstart + i], 0.5 * (p[jstart + (m - i - 1) + j] + past_edge_points[jstart + i]));
             }
             else
             {
@@ -99,6 +102,7 @@ void BinomialMesh1D::parallelStencilRhombus(
                     p[jstart + (m - i - 1) + j],
                     p[jstart + (m - i - 1) + j + 1]);
                 p[jstart + (m - i - 1) + j] = value;
+                printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", jstart + (m - i - 1) + j, jstart + (m - i - 1) + j, jstart + (m - i - 1) + j + 1, p[jstart + (m - i - 1) + j], p[jstart + (m - i - 1) + j + 1], 0.5 * (p[jstart + (m - i - 1) + j] + p[jstart + (m - i - 1) + j + 1]));
 
                 if (jstart != 0 && i == m - 1 && j == 0)
                 {
@@ -116,6 +120,7 @@ void BinomialMesh1D::parallelStencilRhombus(
                 p[jstart + j],
                 p[jstart + j + 1]);
             p[jstart + j] = value;
+            printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", jstart + j, jstart + j, jstart + j + 1, p[jstart + j], p[jstart + j + 1], 0.5 * (p[jstart + j] + past_edge_points[jstart + j + 1]));
             if (jstart != 0 && j == 0)
             {
                 curr_edge_points[jstart - m + i + 1] = value;
@@ -130,6 +135,7 @@ double BinomialMesh1D::calculate_serial()
     {
         for (int j = 0; j < n - i - 1; j++)
         {
+            printf("v[%02d] = 0.5 * (v[%02d] + v[%02d]) = 0.5 * (%f + %f) = %f\n", j, j, j + 1, v[j], v[j + 1], 0.5 * (v[j] + v[j + 1]));
             v[j] = getValue(v[j], v[j + 1]);
         }
     }

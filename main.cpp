@@ -44,6 +44,12 @@ PYBIND11_MODULE(optionpricing, mod)
         .def("sum_serial", &BinomialPricing::sum_serial)
         .def("sum_parallel", &BinomialPricing::sum_parallel);
 
+    py::class_<TriDiagSolver>(mod, "TriDiagSolver")
+        .def(py::init<int, double, double, double>())
+        .def("sety", &TriDiagSolver::sety)
+        .def("getx", &TriDiagSolver::getx)
+        .def("solve", &TriDiagSolver::solve);
+
 #ifdef VERSION_INFO
     mod.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
 #else
