@@ -36,40 +36,34 @@ def test_print():
 #     assert out1 == out2
 
 
-# def test_mesh_calculate():
-#     N = 1500
+def test_mesh_calculate():
+    N = 600
+    num = 1
 
-#     bmp = optionpricing.BinomialMesh(N, 0.0)
-#     bmp.set_initial_condition()
-#     ptime = timeit(bmp.calculate_parallel, number=1000) / 1000
-#     print("parallel: ", ptime)
+    # bmp = optionpricing.BinomialMesh(N, 0.0)
+    # bmp.set_initial_condition()
+    # ptime = timeit(bmp.calculate_parallel, number=num) / num
+    # print("parallel: ", ptime)
 
-#     bms = optionpricing.BinomialMesh(N, 0.0)
-#     bms.set_initial_condition()
-#     stime = timeit(bms.calculate_serial, number=1000) / 1000
-#     print("serial: ", stime)
+    # bms = optionpricing.BinomialMesh(N, 0.0)
+    # bms.set_initial_condition()
+    # stime = timeit(bms.calculate_serial, number=num) / num
+    # print("serial: ", stime)
 
-#     bmp1d = optionpricing.BinomialMesh1D(N, 0.0)
-#     bmp1d.set_initial_condition()
-#     ptime = timeit(bmp1d.calculate_parallel, number=1000) / 1000
-#     print("parallel: ", ptime)
+    bmp1d = optionpricing.BinomialMesh1D(N, 0.0)
+    bmp1d.set_initial_condition()
+    v1 = bmp1d.calculate_parallel()
+    ptime = timeit(bmp1d.calculate_parallel, number=num) / num
+    print("parallel: ", ptime)
 
-#     print(bmp1d.calculate_parallel())
+    bms1d = optionpricing.BinomialMesh1D(N, 0.0)
+    bms1d.set_initial_condition()
+    v2 = bms1d.calculate_serial()
 
-#     # bms1d = optionpricing.BinomialMesh1D(N, 0.0)
-#     # bms1d.set_initial_condition()
-#     # stime = timeit(bms1d.calculate_serial, number=1000) / 1000
-#     # print("serial: ", stime)
+    stime = timeit(bms1d.calculate_serial, number=num) / num
+    print("serial: ", stime)
 
-#     print("speedup: ", stime / ptime, "x")
+    # print("speedup: ", stime / ptime, "x")
 
-#     bms = optionpricing.BinomialMesh(N, 0.0)
-#     bms.set_initial_condition()
-#     bms.calculate_serial()
+    print(v1, v2)
 
-#     bmp = optionpricing.BinomialMesh(N, 0.0)
-#     bmp.set_initial_condition()
-#     bmp.calculate_parallel()
-
-#     for i in range(N):
-#         assert np.isclose(bmp.get(i, 0), bms.get(i, 0))

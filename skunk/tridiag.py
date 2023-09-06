@@ -1,6 +1,6 @@
 import numpy as np
 
-n = 12
+n = 31
 a = -1.0 * np.ones(n)
 a[0] = 0.0  # fix indexing
 b = 2.0 * np.ones(n)

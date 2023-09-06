@@ -48,7 +48,8 @@ PYBIND11_MODULE(optionpricing, mod)
         .def(py::init<int, double, double, double>())
         .def("sety", &TriDiagSolver::sety)
         .def("getx", &TriDiagSolver::getx)
-        .def("solve", &TriDiagSolver::solve);
+        .def("solve_serial", &TriDiagSolver::solve_serial)
+        .def("solve_parallel", &TriDiagSolver::solve_parallel);
 
 #ifdef VERSION_INFO
     mod.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

@@ -4,22 +4,18 @@
 #include <omp.h>
 #include <time.h>
 
-// #include "SCmathlib.h"
-
 using namespace std;
-// const int sizeT;
 
-int sizeInput, sizeN, sizeT;
-
+int n, sizeN, nn;
 int maxMatsize = 25;
 
 int main()
 {
 
     int count = 0;
-    bool flag;
-    cout << "Enter the sizeT of the system : ";
-    cin >> sizeInput;
+    bool flag = false;
+    cout << "Enter the nn of the system : ";
+    cin >> n;
 
     double *p = new double[maxMatsize];
 
@@ -28,9 +24,9 @@ int main()
 
         p[k] = pow(2, k) - 1;
 
-        if (p[k] == sizeInput)
+        if (p[k] == n)
         {
-            sizeT = p[k];
+            nn = p[k];
             flag = true;
 
             cout << "sizeN = " << sizeN;
@@ -38,7 +34,7 @@ int main()
         }
         else
         {
-            if (p[k] >= sizeInput)
+            if (p[k] >= n)
             {
                 count = count + 1;
             }
@@ -46,11 +42,21 @@ int main()
     }
 
     sizeN = p[maxMatsize - count];
+
+    cout << nn << endl;
+    cout << sizeN << endl;
+    cout << n << endl;
+    for (int i = 0; i < maxMatsize; i++)
+    {
+        cout << p[i] << " ";
+    }
+    cout << endl;
+
     if (flag == false)
     {
-        sizeT = sizeN;
+        nn = sizeN;
     }
-    cout << sizeT << "  " << sizeInput;
+    cout << nn << "  " << n;
     cout << endl;
 
     clock_t start = clock();
@@ -59,95 +65,100 @@ int main()
     int index1, index2, offset;
     double alpha, gamma;
 
-    double *x = new double[sizeT];
-    for (i = 0; i < sizeT; i++)
+    double *x = new double[nn];
+    for (i = 0; i < nn; i++)
     {
         x[i] = 0.0;
     }
 
-    double *F = new double[sizeT];
-    double *mainDia = new double[sizeT];
-    double *subDia = new double[sizeT];
-    double *supDia = new double[sizeT];
+    double *y = new double[nn];
+    double *bDiag = new double[nn];
+    double *aDiag = new double[nn];
+    double *cDiag = new double[nn];
 
     if (flag == false)
     {
         // #pragma omp parallel for
-        for (i = 0; i < sizeInput; i++)
+        for (i = 0; i < n; i++)
         {
 
-            F[i] = 1.0;
-            mainDia[i] = 2.0;
-            subDia[i] = -1.0;
-            supDia[i] = -1.0;
+            y[i] = 1.0;
+            bDiag[i] = 2.0;
+            aDiag[i] = -1.0;
+            cDiag[i] = -1.0;
         }
 
         // #pragma omp parallel for
-        for (i = sizeInput; i < sizeT; i++)
+        for (i = n; i < nn; i++)
         {
 
-            F[i] = 1.0;
-            mainDia[i] = 1.0;
-            subDia[i] = 0.0;
-            supDia[i] = 0.0;
+            y[i] = 1.0;
+            bDiag[i] = 1.0;
+            aDiag[i] = 0.0;
+            cDiag[i] = 0.0;
         }
     }
 
     else
     {
 
-        for (i = 0; i < sizeT; i++)
+        for (i = 0; i < nn; i++)
         {
 
-            F[i] = 1.0;
-            mainDia[i] = 2.0;
-            subDia[i] = -1.0;
-            supDia[i] = -1.0;
+            y[i] = 1.0;
+            bDiag[i] = 2.0;
+            aDiag[i] = -1.0;
+            cDiag[i] = -1.0;
         }
     }
 
-    subDia[0] = 0.0;
-    supDia[sizeInput - 1] = 0.0;
+    aDiag[0] = 0.0;
+    cDiag[n - 1] = 0.0;
 
-    int logSize = log2(sizeT + 1) - 1;
+    int lnn = log2(nn + 1) - 1;
 
     /// Cyclic Reduction Step 1
-    for (i = 0; i < logSize; i++)
+    for (i = 0; i < lnn; i++)
     {
         int step = pow(2, i + 1);
-#pragma omp parallel shared(subDia, supDia, mainDia, F, sizeT) private(j, index1, index2, alpha, gamma)
+#pragma omp parallel shared(aDiag, cDiag, bDiag, y, nn) private(j, index1, index2, alpha, gamma)
         {
 #pragma omp for
-            for (j = pow(2, i + 1) - 1; j < sizeT; j = j + step)
+            for (j = pow(2, i + 1) - 1; j < nn; j = j + step)
             {
 
                 // offset = pow(2,i);
                 index1 = j - pow(2, i);
                 index2 = j + pow(2, i);
 
-                alpha = subDia[j] / mainDia[index1];
-                gamma = supDia[j] / mainDia[index2];
+                alpha = aDiag[j] / bDiag[index1];
+                gamma = cDiag[j] / bDiag[index2];
 
                 // #pragma omp atomic capture
-                subDia[j] = -subDia[index1] * (alpha);
-                mainDia[j] = mainDia[j] - supDia[index1] * alpha - subDia[index2] * gamma;
-                supDia[j] = -supDia[index2] * (gamma);
-                F[j] = F[j] - F[index1] * alpha - F[index2] * gamma;
+                aDiag[j] = -aDiag[index1] * (alpha);
+                bDiag[j] = bDiag[j] - cDiag[index1] * alpha - aDiag[index2] * gamma;
+                cDiag[j] = -cDiag[index2] * (gamma);
+                y[j] = y[j] - y[index1] * alpha - y[index2] * gamma;
             }
         }
     }
 
-    int index = (sizeT - 1) / 2;
-    x[index] = F[index] / mainDia[index];
+    for (i = 0; i < nn; i++)
+    {
+        std::cout << i << "," << aDiag[i] << "," << bDiag[i] << "," << cDiag[i] << "," << x[i] << "," << y[i] << std::endl;
+    }
 
-    for (i = log2(sizeT + 1) - 2; i >= 0; i--)
+    int index = (nn - 1) / 2;
+    x[index] = y[index] / bDiag[index];
+
+    for (i = log2(nn + 1) - 2; i >= 0; i--)
     {
         int step = pow(2, i + 1);
-#pragma omp parallel shared(x, F, subDia, supDia, mainDia, sizeT) private(j, index1, index2, alpha, gamma)
+#pragma omp parallel shared(x, y, aDiag, cDiag, bDiag, nn) private(j, index1, index2, alpha, gamma)
 
         {
 #pragma omp for
-            for (j = pow(2, i + 1) - 1; j < sizeT; j = j + step)
+            for (j = pow(2, i + 1) - 1; j < nn; j = j + step)
             {
                 offset = pow(2, i);
                 index1 = j - offset;
@@ -157,26 +168,26 @@ int main()
                 if (index1 - offset < 0)
                 {
 
-                    x[index1] = (F[index1] - supDia[index1] * x[index1 + offset]) / mainDia[index1];
+                    x[index1] = (y[index1] - cDiag[index1] * x[index1 + offset]) / bDiag[index1];
                 }
                 else
                 {
-                    x[index1] = (F[index1] - subDia[index1] * x[index1 - offset] - supDia[index1] * x[index1 + offset]) / mainDia[index1];
+                    x[index1] = (y[index1] - aDiag[index1] * x[index1 - offset] - cDiag[index1] * x[index1 + offset]) / bDiag[index1];
                 }
 
-                if (index2 + offset >= sizeT)
+                if (index2 + offset >= nn)
                 {
-                    x[index2] = (F[index2] - subDia[index2] * x[index2 - offset]) / mainDia[index2];
+                    x[index2] = (y[index2] - aDiag[index2] * x[index2 - offset]) / bDiag[index2];
                 }
                 else
                 {
-                    x[index2] = (F[index2] - subDia[index2] * x[index2 - offset] - supDia[index2] * x[index2 + offset]) / mainDia[index2];
+                    x[index2] = (y[index2] - aDiag[index2] * x[index2 - offset] - cDiag[index2] * x[index2 + offset]) / bDiag[index2];
                 }
             }
         }
     }
 
-    for (i = 0; i < sizeInput; i++)
+    for (i = 0; i < n; i++)
     {
         cout << i << " = " << x[i] << endl;
     }

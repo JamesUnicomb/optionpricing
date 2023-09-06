@@ -8,6 +8,7 @@ class BinomialMesh1D
 private:
     const int n;
     double *v;
+    double **varr;
 
 public:
     BinomialMesh1D(int n);
@@ -23,18 +24,43 @@ public:
     void parallelStencilRhombus(
         double *p, double *past_edge_points, double *curr_edge_points, int jstart, int m, int width, int level);
     double calculate_serial();
-    double calculate_parallel();
+    double calculate_parallel(int numblocks);
     void set_initial_condition();
+    void print();
     ~BinomialMesh1D();
 };
 
-BinomialMesh1D::BinomialMesh1D(int n) : n(n), v(n > 0 ? new double[n] : nullptr) {}
+BinomialMesh1D::BinomialMesh1D(int n) : n(n), v(n > 0 ? new double[n] : nullptr), varr(n > 0 ? new double *[n] : nullptr)
+{
+    int i;
+    if (varr)
+    {
+        int nel = n * (n + 1) / 2;
+        varr[0] = nel > 0 ? new double[nel] : nullptr;
+    }
 
-BinomialMesh1D::BinomialMesh1D(int n, const double &a) : n(n), v(n > 0 ? new double[n] : nullptr)
+    for (i = 1; i < n; i++)
+        varr[i] = varr[i - 1] + i;
+}
+
+BinomialMesh1D::BinomialMesh1D(int n, const double &a) : n(n), v(n > 0 ? new double[n] : nullptr), varr(n > 0 ? new double *[n] : nullptr)
 {
     int i, j;
     for (i = 0; i < n; i++)
         v[i] = a;
+
+    if (varr)
+    {
+        int nel = n * (n + 1) / 2;
+        varr[0] = nel > 0 ? new double[nel] : nullptr;
+    }
+
+    for (i = 1; i < n; i++)
+        varr[i] = varr[i - 1] + i;
+
+    for (i = 0; i < n; i++)
+        for (j = 0; j <= i; j++)
+            varr[i][j] = a;
 }
 
 double BinomialMesh1D::getValue(
@@ -67,6 +93,7 @@ void BinomialMesh1D::parallelStencilTriangle(
         {
             value = getValue(p[jstart + j], p[jstart + j + 1]);
             p[jstart + j] = value;
+            varr[level - i - 2][jstart + j] = value;
 
             if (jstart != 0 && j == 0)
             {
@@ -93,6 +120,7 @@ void BinomialMesh1D::parallelStencilRhombus(
                     p[jstart + (m - i - 1) + j],
                     past_edge_points[jstart + i]);
                 p[jstart + (m - i - 1) + j] = value;
+                varr[level + (m - i - 1) - 1][jstart + (m - i - 1) + j] = value;
             }
             else
             {
@@ -100,6 +128,7 @@ void BinomialMesh1D::parallelStencilRhombus(
                     p[jstart + (m - i - 1) + j],
                     p[jstart + (m - i - 1) + j + 1]);
                 p[jstart + (m - i - 1) + j] = value;
+                varr[level + (m - i - 1) - 1][jstart + (m - i - 1) + j] = value;
 
                 if (jstart != 0 && i == m - 1 && j == 0)
                 {
@@ -117,6 +146,7 @@ void BinomialMesh1D::parallelStencilRhombus(
                 p[jstart + j],
                 p[jstart + j + 1]);
             p[jstart + j] = value;
+            varr[level - i - 2][jstart + j] = value;
 
             if (jstart != 0 && j == 0)
             {
@@ -137,37 +167,36 @@ double BinomialMesh1D::calculate_serial()
         {
             value = getValue(v[j], v[j + 1]);
             v[j] = value;
+            varr[n - i - 2][j] = value;
         }
     }
 
     return v[0];
 }
 
-double BinomialMesh1D::calculate_parallel()
+double BinomialMesh1D::calculate_parallel(int numblocks)
 {
-    int j, row;
-    double *past_edge_points = new double[n];
-    double *curr_edge_points = new double[n];
-
-    int numblocks = 12;
     int blocksize = n / numblocks;
     int edgeblocksize = n % numblocks;
 
-    for (j = 0; j < n; j++)
+    double *past_edge_points = new double[n];
+    double *curr_edge_points = new double[n];
+
+    for (int i = 0; i < n; i++)
     {
-        past_edge_points[j] = curr_edge_points[j] = 0.0;
+        past_edge_points[i] = curr_edge_points[i] = 0.0;
     }
-    for (j = 0; j < n; j = j + blocksize)
+    for (int i = 0; i < n; i = i + blocksize)
     {
-        past_edge_points[j] = v[j + blocksize];
+        past_edge_points[i] = v[i + blocksize];
     }
 
-    for (j = 0; j < numblocks; j++)
+    for (int i = 0; i < numblocks; i++)
     {
         parallelStencilTriangle(
             v,
             past_edge_points,
-            j * blocksize,
+            i * blocksize,
             blocksize,
             blocksize,
             n);
@@ -183,9 +212,9 @@ double BinomialMesh1D::calculate_parallel()
             n);
     }
 
-    for (row = 1; row < numblocks + 1; row++)
+    for (int row = 1; row < numblocks + 1; row++)
     {
-        for (j = 0; j < numblocks - row; j++)
+        for (int j = 0; j < numblocks - row; j++)
         {
             parallelStencilRhombus(
                 v,
@@ -196,7 +225,6 @@ double BinomialMesh1D::calculate_parallel()
                 blocksize,
                 (numblocks - row) * blocksize + edgeblocksize);
         }
-
         if (edgeblocksize > 0)
         {
             parallelStencilRhombus(
@@ -209,9 +237,9 @@ double BinomialMesh1D::calculate_parallel()
                 (numblocks - row) * blocksize + edgeblocksize);
         }
 
-        for (j = 0; j < n; j++)
+        for (int k = 0; k < n; k++)
         {
-            past_edge_points[j] = curr_edge_points[j];
+            past_edge_points[k] = curr_edge_points[k];
         }
     }
 
@@ -223,6 +251,20 @@ void BinomialMesh1D::set_initial_condition()
     for (int j = 0; j < n; j++)
     {
         v[j] = (j < n / 2) ? 1.0 : 0.0;
+        varr[n - 1][j] = (j < n / 2) ? 1.0 : 0.0;
+    }
+}
+
+void BinomialMesh1D::print()
+{
+    for (int i = 0; i < n; i++)
+    {
+        printf("%d ", i);
+        for (int j = 0; j <= i; j++)
+        {
+            printf("%f ", varr[i][j]);
+        }
+        printf("\n");
     }
 }
 
